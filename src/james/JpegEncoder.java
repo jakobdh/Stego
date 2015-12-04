@@ -1093,8 +1093,8 @@ public class JpegEncoder extends Frame {
             }
         }
         System.out.println("got " + coeffCount + " DCT AC/DC coefficients");
-        //hideInfo(coeff);
-        hideInfoXaviVersion(coeff);
+        //hideInfoXaviVersion(coeff);
+        hideInfo(coeff);
         System.out.println("Starting Huffman Encoding.");
         // Do the Huffman Encoding now.
         shuffledIndex = 0;
@@ -1143,6 +1143,35 @@ public class JpegEncoder extends Frame {
                 byteToEmbed = this.embeddedData.available();
             } catch (final Exception e) {
                 e.printStackTrace();
+            }
+            System.out.print("Embedding of " + (byteToEmbed * 8 + 32) + " bits (" + byteToEmbed + "+4 bytes) ");
+            nextBitToEmbed = byteToEmbed & 1;
+            byteToEmbed >>= 1;
+            int availableBitsToEmbed = 31;
+            for (int i = 0; i < coeff.length; i++) {
+                if (i % 64 == 0) {
+                    if (nextBitToEmbed == 0){
+                    	coeff[i] = (coeff[i] / 10) * 10;
+                    } else coeff[i] = (coeff[i] / 10) * 10 + 5;
+                }
+                
+                if (availableBitsToEmbed == 0) {
+                    // If the byte of embedded text is
+                    // empty, we will get a new one.
+                    try {
+                        if (this.embeddedData.available() == 0) {
+                            break;
+                        }
+                        byteToEmbed = this.embeddedData.read();
+                    } catch (final Exception e) {
+                        e.printStackTrace();
+                        break;
+                    }
+                    availableBitsToEmbed = 8;
+                }
+                nextBitToEmbed = byteToEmbed & 1;
+                byteToEmbed >>= 1;
+                availableBitsToEmbed--;
             }
     	}
 		
