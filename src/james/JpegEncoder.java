@@ -1093,143 +1093,8 @@ public class JpegEncoder extends Frame {
             }
         }
         System.out.println("got " + coeffCount + " DCT AC/DC coefficients");
-        int _changed = 0;
-        int _embedded = 0;
-        int _examined = 0;
-        int _expected = 0;
-        int _one = 0;
-        int _large = 0;
-        int _thrown = 0;
-        int _zero = 0;
-        for (i = 0; i < coeffCount; i++) {
-            if (i % 64 == 0) {
-                continue;
-            }
-            if (coeff[i] == 1) {
-                _one++;
-            }
-            if (coeff[i] == -1) {
-                _one++;
-            }
-            if (coeff[i] == 0) {
-                _zero++;
-            }
-        }
-        _large = coeffCount - _zero - _one - coeffCount / 64;
-        _expected = _large + (int) (0.49 * _one);
-        //
-        // System.out.println("zero="+_zero);
-        System.out.println("one=" + _one);
-        System.out.println("large=" + _large);
-        //
-        System.out.println("expected capacity: " + _expected + " bits");
-        ArrayList<Integer> changed_coeffs = new ArrayList<>();
-        // westfeld
-        if (this.embeddedData != null) {
-            // Now we embed the secret data in the permutated sequence.
-            System.out.println("Permutation starts");
-            int nextBitToEmbed = 0;
-            int byteToEmbed = 0;
-            int availableBitsToEmbed = 0;
-            // We start with the length information. Well,
-            // the length information it is more than one
-            // byte, so this first "byte" is 32 bits long.
-            try {
-                byteToEmbed = this.embeddedData.available();
-            } catch (final Exception e) {
-                e.printStackTrace();
-            }
-            System.out.print("Embedding of " + (byteToEmbed * 8 + 32) + " bits (" + byteToEmbed + "+4 bytes) ");
-            // We use the most significant byte for the 1 of n
-            // code, and reserve one extra bit for future use.
-            if (byteToEmbed > 0x007fffff) {
-                byteToEmbed = 0x007fffff;
-            }
-            
-            nextBitToEmbed = byteToEmbed & 1;
-            byteToEmbed >>= 1;
-            availableBitsToEmbed = 31;
-            _embedded++;
-            // bit can only be powers of 2
-            int bit = 8;
-            int ind = (int) (Math.log(bit) / Math.log(2));
-        	// default code
-            // The main embedding loop follows.
-            for (i = 0; i < coeffCount; i++) {
-                if (i % 64 == 0) {
-                    continue; // skip DC coefficients
-                }
-                if (Math.abs(coeff[i]) < 2*bit) {
-                    continue; // skip zeroes and everything that is smaller than 5 because we subtract 4!!!
-                }
-                _examined++;
-                if (coeff[i] > 0) {
-                    if (((coeff[i] & bit) >> ind) != nextBitToEmbed) {
-                        coeff[i] -= bit; // decrease absolute value
-                        _changed++;
-                    }
-                } else {
-                    if (((coeff[i] & bit) >> ind) == nextBitToEmbed) {
-                        coeff[i] += bit; // decrease absolute value
-                        _changed++;
-                    }
-                }
-                if (Math.abs(coeff[i]) >= 2*bit) {
-                	changed_coeffs.add(i); //add only indices that REALLY carry information
-                    // The coefficient is still nonzero. We
-                    // successfully embedded "nextBitToEmbed".
-                    // We will read a new bit to embed now.
-                    if (availableBitsToEmbed == 0) {
-                        // If the byte of embedded text is
-                        // empty, we will get a new one.
-                        try {
-                            if (this.embeddedData.available() == 0) {
-                                break;
-                            }
-                            byteToEmbed = this.embeddedData.read();
-                        } catch (final Exception e) {
-                            e.printStackTrace();
-                            break;
-                        }
-                        availableBitsToEmbed = 8;
-                    }
-                    nextBitToEmbed = byteToEmbed & 1;
-                    byteToEmbed >>= 1;
-                    availableBitsToEmbed--;
-                    _embedded++;
-                } else {
-                    _thrown++;
-                }
-            }
-            if (_examined > 0) {
-                System.out.println(_examined + " coefficients examined");
-            }
-            System.out.println(_changed + " coefficients changed (efficiency: " + _embedded / _changed + "."
-                    + _embedded * 10 / _changed % 10 + " bits per change)");
-            System.out.println(_thrown + " coefficients thrown (zeroed)");
-            System.out.println(_embedded + " bits (" + _embedded / 8 + " bytes) embedded");
-            try {
-    			PrintWriter writer = new PrintWriter("changed_coeffs.txt", "UTF-8");
-    			writer.println(coeffCount + "coefficients found.");
-    			writer.println("List of all coefficients after change:");
-    			for (int coeffnt : coeff){
-    				writer.print(coeffnt + ", ");
-    			}
-    			writer.println();
-    			writer.println("Indices of coefficients that have been changed:");
-    			for (int num : changed_coeffs) {
-    				writer.print(num);
-    				writer.print(", ");
-    			}
-    			writer.close();
-    		} catch (FileNotFoundException e) {
-    			// TODO Auto-generated catch block
-    			e.printStackTrace();
-    		} catch (UnsupportedEncodingException e) {
-    			// TODO Auto-generated catch block
-    			e.printStackTrace();
-    		}
-        }
+        hideInfo(coeff);
+        
         System.out.println("Starting Huffman Encoding.");
         // Do the Huffman Encoding now.
         shuffledIndex = 0;
@@ -1252,7 +1117,21 @@ public class JpegEncoder extends Frame {
         this.Huf.flushBuffer(outStream);
     }
 
-    public void WriteEOI(final BufferedOutputStream out) {
+    private void hideInfo(int[] coeff) {
+    	if (this.embeddedData != null) {
+    		System.out.println("Embedding starts...");
+    		int nextBitToEmbed = 0;
+            int byteToEmbed = 0;
+            try {
+                byteToEmbed = this.embeddedData.available();
+            } catch (final Exception e) {
+                e.printStackTrace();
+            }
+    	}
+		
+	}
+
+	public void WriteEOI(final BufferedOutputStream out) {
         final byte[] EOI = {
                 (byte) 0xFF, (byte) 0xD9 };
         WriteMarker(EOI, out);
