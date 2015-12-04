@@ -18,7 +18,7 @@
 // indeterministic embedding
 // password switch
 package james;
-
+//scheisse
 import java.awt.AWTException;
 import java.awt.Frame;
 import java.awt.Image;
