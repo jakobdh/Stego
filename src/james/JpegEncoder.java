@@ -1093,8 +1093,8 @@ public class JpegEncoder extends Frame {
             }
         }
         System.out.println("got " + coeffCount + " DCT AC/DC coefficients");
-        hideInfo(coeff);
-        
+        //hideInfo(coeff);
+        hideInfoXaviVersion(coeff);
         System.out.println("Starting Huffman Encoding.");
         // Do the Huffman Encoding now.
         shuffledIndex = 0;
@@ -1117,7 +1117,24 @@ public class JpegEncoder extends Frame {
         this.Huf.flushBuffer(outStream);
     }
 
-    private void hideInfo(int[] coeff) {
+    private void hideInfoXaviVersion(int[] coeff) {
+		// TODO Auto-generated method stub
+    	int count=0;
+		for(int i=0;i<coeff.length;i++){
+			if((i)%64!=0 && coeff[i]>10){
+				System.out.println("coeffcha");
+				count++;
+				int a= (int) Math.round(Math.random());
+				if (a==0){
+					coeff[i]-=7;
+				}else coeff[i]+=7;
+			}
+			
+		}
+		System.out.println(count);
+	}
+
+	private void hideInfo(int[] coeff) {
     	if (this.embeddedData != null) {
     		System.out.println("Embedding starts...");
     		int nextBitToEmbed = 0;
