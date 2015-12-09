@@ -39,55 +39,54 @@ public class Extract {
     	JpegDecoder jpg = new JpegDecoder(image, 80);
         System.out.println("Huffman decoding starts");
         coeff = jpg.RetrieveCoefficients();
-        ArrayList<Integer> read_coeffs = new ArrayList<Integer>();
         System.out.println("Permutation starts");
         System.out.println(coeff.length + " indices shuffled");
-        int extractedByte = 0;
+        decodeMessage(coeff, fos);
+    }
+    
+    public static void decodeMessage(int[] coeff, final OutputStream fos) throws IOException {
+    	int extractedByte = 0;
         int availableExtractedBits = 0;
         int extractedFileLength = 0;
         int nBytesExtracted = 0;
         int extractedBit;
         int i;
-        // has to be the same value as used for the encoding
-        int bit = 8;
-        int ind = (int) (Math.log(bit) / Math.log(2));
         System.out.println("Extraction starts");
         // extract length information
         for (i = 0; availableExtractedBits < 32; i++) {
+        	//System.out.println("blabla");
             if (i % 64 == 0) {
                 continue; // skip DC coefficients
             }
-            // j = i - i % 64 + deZigZag[i % 64];
-            if (Math.abs(coeff[i]) < 2*bit) {
-                continue; // skip zeroes
+            if (coeff[i] < 9) {
+                continue;
             }
-            if (coeff[i] > 0) {
-                extractedBit = (coeff[i] & bit) >> ind;
+            if ((Math.abs(coeff[i]) % 10 <= 2) || (10 - (Math.abs(coeff[i]) % 10) <= 2)) {
+                extractedBit = 0;
             } else {
-                extractedBit = 1 - ((coeff[i] & bit) >> ind);
+                extractedBit = 1;
             }
-            read_coeffs.add(i);
+            System.out.println(i + ": " + extractedBit + " <- " + coeff[i]);
             extractedFileLength |= extractedBit << availableExtractedBits++;
         }
         extractedFileLength &= 0x007fffff;
-        System.out.println("Length of embedded file: " + extractedFileLength + " bytes");
+        //System.out.println("Length of embedded file: " + extractedFileLength + " bytes");
         availableExtractedBits = 0;
         
-        System.out.println("Default code used");
+        //System.out.println("Default code used");
         for (; i < coeff.length; i++) {
-            if (i % 64 == 0) {
+        	if (i % 64 == 0) {
                 continue; // skip DC coefficients
             }
-            // j = i - i % 64 + deZigZag[i % 64];
-            if (Math.abs(coeff[i]) < 2*bit) {
-                continue; // skip zeroes
+            if (coeff[i] < 9) {
+                continue;
             }
-            if (coeff[i] > 0) {
-                extractedBit = (coeff[i] & bit) >> ind;
+            if ((Math.abs(coeff[i]) % 10 <= 2) || (10 - (Math.abs(coeff[i]) % 10) <= 2)) {
+                extractedBit = 0;
             } else {
-                extractedBit = 1 - ((coeff[i] & bit) >> ind);
+                extractedBit = 1;
             }
-            read_coeffs.add(i);
+            System.out.println(i + ": " + extractedBit + " <- " + coeff[i]);
             extractedByte |= extractedBit << availableExtractedBits++;
             if (availableExtractedBits == 8) {
                 // remove pseudo random pad
@@ -104,27 +103,6 @@ public class Extract {
             System.out.println("Incomplete file: only " + nBytesExtracted + " of " + extractedFileLength
                     + " bytes extracted");
         }
-        try {
-			PrintWriter writer = new PrintWriter("read_coeffs.txt", "UTF-8");
-			writer.println(coeff.length + "coefficients found.");
-			writer.println("List of all coefficients after facebook upload:");
-			for (int coeffnt : coeff){
-				writer.print(coeffnt + ", ");
-			}
-			writer.println();
-			writer.println("Indices of coefficients that have contain hidden info:");
-			for (int num : read_coeffs) {
-				writer.print(num);
-				writer.print(", ");
-			}
-			writer.close();
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
     }
 
     public static void main(final String[] args) {

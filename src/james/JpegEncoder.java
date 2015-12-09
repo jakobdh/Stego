@@ -1144,35 +1144,50 @@ public class JpegEncoder extends Frame {
             } catch (final Exception e) {
                 e.printStackTrace();
             }
-            System.out.print("Embedding of " + (byteToEmbed * 8 + 32) + " bits (" + byteToEmbed + "+4 bytes) ");
+            System.out.println("Embedding of " + (byteToEmbed * 8 + 32) + " bits (" + byteToEmbed + "+4 bytes) ");
             nextBitToEmbed = byteToEmbed & 1;
             byteToEmbed >>= 1;
             int availableBitsToEmbed = 31;
-            for (int i = 0; i < coeff.length; i++) {
-                if (i % 64 == 0) {
+            int nrBits = 1;
+            int i;
+            for (i = 0; i < coeff.length; i++) {
+            	if ((i)%64!=0 && coeff[i] >= 10) {
                     if (nextBitToEmbed == 0){
                     	coeff[i] = (coeff[i] / 10) * 10;
-                    } else coeff[i] = (coeff[i] / 10) * 10 + 5;
-                }
-                
-                if (availableBitsToEmbed == 0) {
-                    // If the byte of embedded text is
-                    // empty, we will get a new one.
-                    try {
-                        if (this.embeddedData.available() == 0) {
+                    } else {
+                    	if (coeff[i] > 0) {
+                    		coeff[i] = (coeff[i] / 10) * 10 + 5;
+                    	} else {
+                    		coeff[i] = (coeff[i] / 10) * 10 - 5;
+                    	}
+                    }
+                    System.out.println(i + ": " + nextBitToEmbed + " -> " + coeff[i]);
+                    if (availableBitsToEmbed == 0) {
+                        // If the byte of embedded text is
+                        // empty, we will get a new one.
+                        try {
+                            if (this.embeddedData.available() == 0) {
+                                break;
+                            }
+                            byteToEmbed = this.embeddedData.read();
+                        } catch (final Exception e) {
+                            e.printStackTrace();
                             break;
                         }
-                        byteToEmbed = this.embeddedData.read();
-                    } catch (final Exception e) {
-                        e.printStackTrace();
-                        break;
+                        availableBitsToEmbed = 8;
                     }
-                    availableBitsToEmbed = 8;
+                    nrBits++;
+                    nextBitToEmbed = byteToEmbed & 1;
+                    byteToEmbed >>= 1;
+                    availableBitsToEmbed--;
                 }
-                nextBitToEmbed = byteToEmbed & 1;
-                byteToEmbed >>= 1;
-                availableBitsToEmbed--;
+            	//The following is done to prevent 9's and 8's where no bit has been encoded, are used in the extraction.
+            	else if ((i)%64!=0 && coeff[i] >= 8) {
+            		coeff[i] = 7;
+            	}
             }
+            System.out.println(nrBits + " bits embedded.");
+            System.out.println(i + " times went through the loop.");
     	}
 		
 	}

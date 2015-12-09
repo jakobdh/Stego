@@ -1,2 +1,3 @@
 e -e secretmessage.txt wall_original.jpg wall_with_message_original.jpg
 x -e out.txt wall_with_message_original.jpg
+x -e out.txt lena_with_message.jpg
