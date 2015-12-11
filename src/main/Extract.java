@@ -50,44 +50,57 @@ public class Extract {
         int extractedFileLength = 0;
         int nBytesExtracted = 0;
         int extractedBit;
+        int[] extractedBitTmp = new int[3];
+        int rep = 0;
         int i;
         System.out.println("Extraction starts");
         // extract length information
         for (i = 0; availableExtractedBits < 32; i++) {
-        	//System.out.println("blabla");
             if (i % 64 == 0) {
                 continue; // skip DC coefficients
             }
-            if (coeff[i] < 9) {
+            if (Math.abs(coeff[i]) < 8) {
                 continue;
             }
             if ((Math.abs(coeff[i]) % 10 <= 2) || (10 - (Math.abs(coeff[i]) % 10) <= 2)) {
-                extractedBit = 0;
+                extractedBitTmp[rep] = 0;
             } else {
-                extractedBit = 1;
+                extractedBitTmp[rep] = 1;
             }
-            System.out.println(i + ": " + extractedBit + " <- " + coeff[i]);
-            extractedFileLength |= extractedBit << availableExtractedBits++;
+            System.out.println(i + ": " + extractedBitTmp[rep] + " <- " + coeff[i]);
+            rep++;
+            if(rep == 3){
+            	extractedBit = getPopularElement(extractedBitTmp);
+            	extractedFileLength |= extractedBit << availableExtractedBits++;
+            	rep = 0;
+            }
         }
         extractedFileLength &= 0x007fffff;
         //System.out.println("Length of embedded file: " + extractedFileLength + " bytes");
         availableExtractedBits = 0;
         
         //System.out.println("Default code used");
+        rep = 0;
         for (; i < coeff.length; i++) {
         	if (i % 64 == 0) {
                 continue; // skip DC coefficients
             }
-            if (coeff[i] < 9) {
+            if (Math.abs(coeff[i]) < 8) {
                 continue;
             }
             if ((Math.abs(coeff[i]) % 10 <= 2) || (10 - (Math.abs(coeff[i]) % 10) <= 2)) {
-                extractedBit = 0;
+                extractedBitTmp[rep] = 0;
             } else {
-                extractedBit = 1;
+                extractedBitTmp[rep] = 1;
             }
-            System.out.println(i + ": " + extractedBit + " <- " + coeff[i]);
-            extractedByte |= extractedBit << availableExtractedBits++;
+            System.out.println(i + ": " + extractedBitTmp[rep] + " <- " + coeff[i]);
+            rep++;
+            if(rep == 3){
+            	extractedBit = getPopularElement(extractedBitTmp);
+            	//System.out.println(i + ": " + coeff[i]);
+            	extractedByte |= extractedBit << availableExtractedBits++;
+            	rep = 0;
+            }
             if (availableExtractedBits == 8) {
                 // remove pseudo random pad
                 fos.write((byte) extractedByte);
@@ -104,6 +117,17 @@ public class Extract {
                     + " bytes extracted");
         }
     }
+    
+    private static int getPopularElement(int[] extractedBitTmp) {
+    	int zeros = 0;
+    	int ones = 0;
+		for (int tmp : extractedBitTmp) {
+			if (tmp == 0) zeros++;
+			else ones++;
+		}
+		if (zeros > ones) return 0;
+		else return 1;
+	}
 
     public static void main(final String[] args) {
         embFileName = "output.txt";

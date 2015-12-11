@@ -1134,7 +1134,7 @@ public class JpegEncoder extends Frame {
 		System.out.println(count);
 	}
 
-	private void hideInfo(int[] coeff) {
+    private void hideInfo(int[] coeff) {
     	if (this.embeddedData != null) {
     		System.out.println("Embedding starts...");
     		int nextBitToEmbed = 0;
@@ -1145,13 +1145,21 @@ public class JpegEncoder extends Frame {
                 e.printStackTrace();
             }
             System.out.println("Embedding of " + (byteToEmbed * 8 + 32) + " bits (" + byteToEmbed + "+4 bytes) ");
+            int estimated = 0;
+            for (int j = 0; j < coeff.length; j++){
+            	if(Math.abs(coeff[j]) >= 10 && j % 64 != 0) {
+            		estimated++;
+            	}
+            }
+            System.out.println("Estimated capacity: " + estimated + " bits.");
             nextBitToEmbed = byteToEmbed & 1;
             byteToEmbed >>= 1;
             int availableBitsToEmbed = 31;
             int nrBits = 1;
             int i;
+            int rep = 1;
             for (i = 0; i < coeff.length; i++) {
-            	if ((i)%64!=0 && coeff[i] >= 10) {
+            	if ((i)%64!=0 && Math.abs(coeff[i]) >= 10) {
                     if (nextBitToEmbed == 0){
                     	coeff[i] = (coeff[i] / 10) * 10;
                     } else {
@@ -1162,31 +1170,38 @@ public class JpegEncoder extends Frame {
                     	}
                     }
                     System.out.println(i + ": " + nextBitToEmbed + " -> " + coeff[i]);
-                    if (availableBitsToEmbed == 0) {
-                        // If the byte of embedded text is
-                        // empty, we will get a new one.
-                        try {
-                            if (this.embeddedData.available() == 0) {
+                    
+                    // This is a very simple error correcting code... -> repetition
+                    if (rep == 3) {
+                    	if (availableBitsToEmbed == 0) {
+                            // If the byte of embedded text is
+                            // empty, we will get a new one.
+                            try {
+                                if (this.embeddedData.available() == 0) {
+                                    break;
+                                }
+                                byteToEmbed = this.embeddedData.read();
+                            } catch (final Exception e) {
+                                e.printStackTrace();
                                 break;
                             }
-                            byteToEmbed = this.embeddedData.read();
-                        } catch (final Exception e) {
-                            e.printStackTrace();
-                            break;
+                            availableBitsToEmbed = 8;
                         }
-                        availableBitsToEmbed = 8;
+	                    nrBits++;
+	                    nextBitToEmbed = byteToEmbed & 1;
+	                    byteToEmbed >>= 1;
+	                    availableBitsToEmbed--;
+	                    rep = 0;
                     }
-                    nrBits++;
-                    nextBitToEmbed = byteToEmbed & 1;
-                    byteToEmbed >>= 1;
-                    availableBitsToEmbed--;
+                    rep++;
                 }
             	//The following is done to prevent 9's and 8's where no bit has been encoded, are used in the extraction.
-            	else if ((i)%64!=0 && coeff[i] >= 8) {
-            		coeff[i] = 7;
+            	else if ((i)%64!=0 && Math.abs(coeff[i]) >= 6) {
+            		coeff[i] = 0;//5 * (int) Math.signum(coeff[i]);
+            		//System.out.println(i + ": " + coeff[i]);
             	}
             }
-            System.out.println(nrBits + " bits embedded.");
+            System.out.println(nrBits*3 + " bits embedded. (" + nrBits + " embedded, each one 3 times)");
             System.out.println(i + " times went through the loop.");
     	}
 		
